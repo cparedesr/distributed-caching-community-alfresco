@@ -1,0 +1,331 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- This Source Code Form is subject to the terms of the Mozilla Public
+   - License, v. 2.0. If a copy of the MPL was not distributed with this
+   - file, You can obtain one at https://mozilla.org/MPL/2.0/. -->
+<beans xmlns="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="
+           http://www.springframework.org/schema/beans
+           http://www.springframework.org/schema/beans/spring-beans-3.0.xsd">
+
+    <bean id="${moduleId}-predefinedBeansEnabler"
+        class="de.acosix.alfresco.utility.common.spring.BeanDeAbstractifyingBeanDefinitionRegistryPostProcessor">
+        <property name="enabledPropertyKeys">
+            <list>
+                <value>${moduleId}.core.enabled</value>
+            </list>
+        </property>
+        <property name="propertiesSource" ref="global-properties" />
+        <property name="targetBeanNamePattern" value="^[A-Z][a-zA-Z]+\.${moduleId}\..+$" />
+    </bean>
+
+    <bean id="Configuration.${moduleId}.jobs" abstract="true" class="org.springframework.scheduling.quartz.SchedulerAccessorBean">
+        <property name="scheduler" ref="schedulerFactory" />
+        <property name="triggers">
+            <list>
+                <ref bean="DiscoverySPI.${moduleId}.core.MemberFinder.refreshJobTrigger" />
+            </list>
+        </property>
+    </bean>
+
+    <bean id="Configuration.${moduleId}.core" abstract="true" class="org.apache.ignite.configuration.IgniteConfiguration">
+        <property name="discoverySpi" ref="DiscoverySPI.${moduleId}.core" />
+        <property name="addressResolver" ref="AddressResolver.${moduleId}.core" />
+        <property name="communicationSpi" ref="CommunicationSPI.${moduleId}.core" />
+        <property name="collisionSpi" ref="CollisionSPI.${moduleId}.core" />
+        <property name="gridLogger" ref="Misc.${moduleId}.core.logger" />
+        <property name="igniteInstanceName" value="${aldica.core.name}" />
+        <property name="consistentId" value="${aldica.core.local.id}" />
+        <property name="localHost" value="${aldica.core.local.host}" />
+        <property name="workDirectory" value="${java.io.tmpdir}/IgniteWork" />
+        <property name="metricsExpireTime" value="1200000" />
+        <property name="metricsLogFrequency" value="600000" />
+        <property name="peerClassLoadingEnabled" value="false" />
+        <property name="connectorConfiguration">
+            <null />
+        </property>
+        <property name="failureDetectionTimeout" value="${aldica.core.failureDetectionTimeout}" />
+        <property name="systemWorkerBlockedTimeout" value="${aldica.core.systemWorkerBlockedTimeout}" />
+        <property name="segmentationPolicy" value="NOOP" />
+        <property name="includeEventTypes">
+            <!-- TODO: Have dynamic feature configurations to add / remove included event types -->
+            <list>
+                <!-- discovery events -->
+                <value>10</value> <!-- node joined -->
+                <value>11</value> <!-- node left -->
+                <value>12</value> <!-- node failed -->
+                <value>13</value> <!-- node metrics updated -->
+                <value>14</value> <!-- node segmented -->
+            </list>
+        </property>
+        <property name="pluginProviders">
+            <list>
+                <ref bean="PluginProvider.${moduleId}.core.security" />
+            </list>
+        </property>
+
+        <property name="publicThreadPoolSize" value="${aldica.core.publicThreadPoolSize}" />
+        <property name="stripedPoolSize" value="${aldica.core.stripedThreadPoolSize}" />
+        <property name="serviceThreadPoolSize" value="${aldica.core.serviceThreadPoolSize}" />
+        <property name="systemThreadPoolSize" value="${aldica.core.systemThreadPoolSize}" />
+        <property name="asyncCallbackPoolSize" value="${aldica.core.asyncCallbackThreadPoolSize}" />
+        <property name="managementThreadPoolSize" value="${aldica.core.managementThreadPoolSize}" />
+        <property name="peerClassLoadingThreadPoolSize" value="${aldica.core.peerClassLoadingThreadPoolSize}" />
+        <!-- <property name="igfsThreadPoolSize" value="${aldica.core.igfsThreadPoolSize}" /> -->
+        <property name="dataStreamerThreadPoolSize" value="${aldica.core.dataStreamerThreadPoolSize}" />
+        <property name="utilityCachePoolSize" value="${aldica.core.utilityCacheThreadPoolSize}" />
+        <property name="queryThreadPoolSize" value="${aldica.core.queryThreadPoolSize}" />
+        <property name="rebalanceThreadPoolSize" value="${aldica.core.rebalanceThreadPoolSize}" />
+
+        <property name="timeServerPortBase" value="${aldica.core.local.time.port}" />
+        <property name="timeServerPortRange" value="${aldica.core.local.time.portRange}" />
+
+        <property name="cacheConfiguration">
+            <list>
+                <ref bean="Configuration.${moduleId}.core.webSessionCache" />
+            </list>
+        </property>
+        <property name="binaryConfiguration" ref="Configuration.${moduleId}.core.binary" />
+        <property name="dataStorageConfiguration" ref="Configuration.${moduleId}.core.storage" />
+
+        <property name="userAttributes">
+            <map>
+                <entry key="${moduleId}.role" value="repository-server" />
+            </map>
+        </property>
+    </bean>
+
+    <bean id="Configuration.${moduleId}.core.binary" abstract="true" class="org.apache.ignite.configuration.BinaryConfiguration" />
+
+    <bean id="Configuration.${moduleId}.core.binary.serializer.configurableRelevantFields" abstract="true"
+        class="org.aldica.common.ignite.binary.SelectivelyReflectiveBinarySerializer">
+        <property name="relevantFieldsProvider">
+            <bean class="org.aldica.common.ignite.binary.ConfigurableSerializationRelevantFieldsProvider">
+                <property name="basePropertyKey" value="${moduleId}.core.binary.relevantFields" />
+                <property name="propertiesSource" ref="global-properties" />
+            </bean>
+        </property>
+    </bean>
+
+    <bean id="Configuration.${moduleId}.core.binary.serializer.alfresco.optimisedTxnCacheRegionKey" abstract="true"
+        class="org.aldica.repo.ignite.binary.TransactionalCacheRegionKeyBinarySerializer">
+        <property name="useRawSerialForm" value="${aldica.core.binary.optimisation.cacheKey.useRawSerial}" />
+    </bean>
+
+    <bean id="Configuration.${moduleId}.core.binary.serializer.alfresco.optimisedCacheRegionKey" abstract="true"
+        class="org.aldica.repo.ignite.binary.CacheRegionKeyBinarySerializer">
+        <property name="useRawSerialForm" value="${aldica.core.binary.optimisation.cacheKey.useRawSerial}" />
+    </bean>
+
+    <bean id="Configuration.${moduleId}.core.binary.serializer.alfresco.optimisedCacheRegionValueKey" abstract="true"
+        class="org.aldica.repo.ignite.binary.CacheRegionValueKeyBinarySerializer">
+        <property name="useRawSerialForm" value="${aldica.core.binary.optimisation.cacheValueKey.useRawSerial}" />
+    </bean>
+    
+    <bean id="Configuration.${moduleId}.core.binary.serializer.alfresco.optimisedStoreRef" abstract="true"
+        class="org.aldica.repo.ignite.binary.StoreRefBinarySerializer">
+        <property name="useRawSerialForm" value="${aldica.core.binary.optimisation.storeRef.useRawSerial}" />
+    </bean>
+
+    <bean id="Configuration.${moduleId}.core.binary.serializer.alfresco.optimisedNodeRef" abstract="true"
+        class="org.aldica.repo.ignite.binary.NodeRefBinarySerializer">
+        <property name="useRawSerialForm" value="${aldica.core.binary.optimisation.nodeRef.useRawSerial}" />
+    </bean>
+
+    <bean id="Configuration.${moduleId}.core.binary.serializer.alfresco.optimisedQName" abstract="true"
+        class="org.aldica.repo.ignite.binary.QNameBinarySerializer">
+        <property name="useRawSerialForm" value="${aldica.core.binary.optimisation.qname.useRawSerial}" />
+    </bean>
+
+    <bean id="Configuration.${moduleId}.core.binary.serializer.alfresco.optimisedMLText" abstract="true"
+        class="org.aldica.repo.ignite.binary.MLTextBinarySerializer">
+        <property name="useIdsWhenReasonable" value="${aldica.core.binary.optimisation.mlText.useIdsWhenReasonable}" />
+        <property name="useRawSerialForm" value="${aldica.core.binary.optimisation.mlText.useRawSerial}" />
+    </bean>
+
+    <bean id="Configuration.${moduleId}.core.binary.serializer.alfresco.optimisedContentData" abstract="true"
+        class="org.aldica.repo.ignite.binary.ContentDataBinarySerializer">
+        <property name="useIdsWhenReasonable" value="${aldica.core.binary.optimisation.contentData.useIdsWhenReasonable}" />
+        <property name="useRawSerialForm" value="${aldica.core.binary.optimisation.contentData.useRawSerial}" />
+    </bean>
+
+    <bean id="Configuration.${moduleId}.core.binary.serializer.alfresco.optimisedModuleVersionNumber" abstract="true"
+        class="org.aldica.repo.ignite.binary.ModuleVersionNumberBinarySerializer">
+        <property name="useRawSerialForm" value="${aldica.core.binary.optimisation.moduleVersionNumber.useRawSerial}" />
+    </bean>
+
+    <bean id="Configuration.${moduleId}.core.binary.serializer.alfresco.optimisedNodeAspects" abstract="true"
+        class="org.aldica.repo.ignite.binary.NodeAspectsBinarySerializer">
+        <property name="useIdsWhenReasonable" value="${aldica.core.binary.optimisation.nodeAspects.useIdsWhenReasonable}" />
+        <property name="useRawSerialForm" value="${aldica.core.binary.optimisation.nodeAspects.useRawSerial}" />
+    </bean>
+
+    <bean id="Configuration.${moduleId}.core.binary.serializer.alfresco.optimisedNodeProperties" abstract="true"
+        class="org.aldica.repo.ignite.binary.NodePropertiesBinarySerializer">
+        <property name="useIdsWhenReasonable" value="${aldica.core.binary.optimisation.nodeProperties.useIdsWhenReasonable}" />
+        <property name="useIdsWhenPossible" value="${aldica.core.binary.optimisation.nodeProperties.useIdsWhenPossible}" />
+        <property name="useRawSerialForm" value="${aldica.core.binary.optimisation.nodeProperties.useRawSerial}" />
+    </bean>
+
+    <bean id="Configuration.${moduleId}.core.binary.binaryTypeConfigurationBeanEmitter"
+        class="org.aldica.common.ignite.spring.BinaryTypeConfigurationBeanDefinitionEmitter">
+        <property name="enabledPropertyKey" value="${moduleId}.core.enabled" />
+        <property name="propertyPrefix" value="${moduleId}.core.binary.type." />
+        <property name="binaryConfigurationBeanDefinitionName">
+            <idref bean="Configuration.${moduleId}.core.binary" />
+        </property>
+        <property name="binaryTypeConfigurationBeanDefinitionNamePrefix" value="Configuration.${moduleId}.core.binary.type." />
+        <property name="instanceNameProperty" value="${moduleId}.core.name" />
+        <property name="propertiesSource" ref="global-properties" />
+    </bean>
+
+    <bean id="Configuration.${moduleId}.core.storage" abstract="true" class="org.apache.ignite.configuration.DataStorageConfiguration">
+        <property name="defaultDataRegionConfiguration" ref="Configuration.${moduleId}.core.storage.defaultDataRegion" />
+
+        <property name="pageSize" value="${aldica.core.storage.pageSize}" />
+        <property name="systemRegionInitialSize" value="${aldica.core.storage.systemInitialSize}" />
+        <property name="systemRegionMaxSize" value="${aldica.core.storage.systemMaxSize}" />
+    </bean>
+
+    <bean id="Configuration.${moduleId}.core.storage.dataRegionBeanEmitter"
+        class="org.aldica.common.ignite.spring.DataRegionBeanDefinitionEmitter">
+        <property name="enabledPropertyKey" value="${moduleId}.core.enabled" />
+        <property name="propertyPrefix" value="${moduleId}.core.storage.region." />
+        <property name="storageBeanDefinitionName">
+            <idref bean="Configuration.${moduleId}.core.storage" />
+        </property>
+        <property name="dataRegionBeanDefinitionNamePrefix" value="Configuration.${moduleId}.core.storage.region." />
+        <property name="instanceNameProperty" value="${moduleId}.core.name" />
+        <property name="propertiesSource" ref="global-properties" />
+    </bean>
+
+    <bean id="Configuration.${moduleId}.core.storage.defaultDataRegion" abstract="true"
+        class="org.apache.ignite.configuration.DataRegionConfiguration">
+        <property name="name" value="${aldica.core.name}.defaultDataRegion" />
+        <property name="initialSize" value="${aldica.core.storage.defaultStorageRegion.initialSize}" />
+        <property name="maxSize" value="${aldica.core.storage.defaultStorageRegion.maxSize}" />
+        <property name="metricsEnabled" value="true" />
+
+        <property name="swapPath" value="${aldica.core.storage.defaultStorageRegion.swapPath}" />
+        <property name="pageEvictionMode" value="RANDOM_2_LRU" />
+    </bean>
+
+    <bean id="Configuration.${moduleId}.core.webSessionCache" abstract="true"
+        class="org.apache.ignite.configuration.CacheConfiguration">
+        <property name="evictionPolicyFactory" ref="Configuration.${moduleId}.core.webSessionCache.evictionPolicyFactory" />
+        <property name="name" value="${aldica.webSessionCache.cacheName}" />
+        <property name="cacheMode" value="${aldica.webSessionCache.cacheMode}" />
+        <property name="affinity">
+            <bean class="org.apache.ignite.cache.affinity.rendezvous.RendezvousAffinityFunction">
+                <property name="excludeNeighbors" value="false" />
+                <property name="partitions" value="${aldica.caches.partitionsCount}" />
+            </bean>
+        </property>
+        <property name="readFromBackup" value="true" />
+        <property name="onheapCacheEnabled" value="true" />
+    </bean>
+
+    <bean id="Configuration.${moduleId}.core.webSessionCache.evictionPolicyFactory" abstract="true"
+        class="org.apache.ignite.cache.eviction.lru.LruEvictionPolicyFactory">
+        <property name="maxSize" value="${aldica.webSessionCache.maxSize}" />
+    </bean>
+
+    <bean id="DiscoverySPI.${moduleId}.core" abstract="true"
+        class="org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi">
+        <property name="ipFinder" ref="DiscoverySPI.${moduleId}.core.MemberFinder" />
+
+        <property name="localPort" value="${aldica.core.local.disco.port}" />
+        <property name="localPortRange" value="${aldica.core.local.disco.portRange}" />
+        <property name="joinTimeout" value="${aldica.core.local.disco.joinTimeout}" />
+        <property name="ackTimeout" value="${aldica.core.local.disco.ackTimeout}" />
+        <property name="socketTimeout" value="${aldica.core.local.disco.socketTimeout}" />
+        <property name="networkTimeout" value="${aldica.core.local.disco.networkTimeout}" />
+    </bean>
+
+    <bean id="DiscoverySPI.${moduleId}.core.MemberFinder" abstract="true"
+        class="org.aldica.common.ignite.discovery.MemberTcpDiscoveryIpFinder">
+        <property name="shared" value="true" />
+        <property name="initialMembers" value="${aldica.core.initialMembers}" />
+    </bean>
+
+    <bean id="DiscoverySPI.${moduleId}.core.MemberAddressRegistrar" abstract="true"
+        class="org.aldica.repo.ignite.discovery.MemberAddressRegistrarImpl">
+        <property name="transactionService" ref="TransactionService" />
+        <property name="jobLockService" ref="JobLockService" />
+        <property name="attributeService" ref="AttributeService" />
+        <property name="configuration" ref="Configuration.${moduleId}.core" />
+        <property name="ipFinder" ref="DiscoverySPI.${moduleId}.core.MemberFinder" />
+        <property name="instanceName" value="${aldica.core.name}" />
+    </bean>
+
+    <bean id="DiscoverySPI.${moduleId}.core.MemberFinder.refreshJobTrigger" abstract="true"
+        class="org.springframework.scheduling.quartz.CronTriggerFactoryBean">
+        <property name="cronExpression" value="${aldica.core.local.disco.registrationRefresh.cron}" />
+        <!-- system.cronJob.startDelayMilliseconds is only available in 6.0+, so we need the default value to be 5.x compatible -->
+        <property name="startDelay" value="${system.cronJob.startDelayMilliseconds:60000}" />
+        <property name="jobDetail">
+            <bean id="DiscoverySPI.${moduleId}.core.MemberFinder.refreshJobDetail"
+                class="de.acosix.alfresco.utility.repo.job.GenericJobDetailsFactoryBean">
+                <property name="jobClass" value="org.aldica.repo.ignite.job.MemberAddressRegistrationRefreshJob" />
+                <property name="jobDataAsMap">
+                    <map>
+                        <entry key="memberAddressRegistrar">
+                            <ref bean="DiscoverySPI.${moduleId}.core.MemberAddressRegistrar" />
+                        </entry>
+                    </map>
+                </property>
+            </bean>
+        </property>
+    </bean>
+
+    <bean id="DiscoverySPI.${moduleId}.core.credentials" abstract="true" class="org.apache.ignite.plugin.security.SecurityCredentials">
+        <property name="login" value="${aldica.core.login}" />
+        <property name="password" value="${aldica.core.password}" />
+    </bean>
+
+    <bean id="AddressResolver.${moduleId}.core" abstract="true"
+        class="org.aldica.common.ignite.discovery.GridAddressResolutionManager">
+        <property name="configuration" ref="Configuration.${moduleId}.core" />
+        <property name="externalHost" value="${aldica.core.public.host}" />
+        <property name="externalDiscoPortBase" value="${aldica.core.public.disco.port}" />
+        <property name="externalCommPortBase" value="${aldica.core.public.comm.port}" />
+        <property name="externalTimePortBase" value="${aldica.core.public.time.port}" />
+    </bean>
+
+    <bean id="CommunicationSPI.${moduleId}.core" abstract="true" class="org.apache.ignite.spi.communication.tcp.TcpCommunicationSpi">
+        <property name="localPort" value="${aldica.core.local.comm.port}" />
+        <property name="localPortRange" value="${aldica.core.local.comm.portRange}" />
+
+        <property name="connectTimeout" value="${aldica.core.local.comm.connectTimeout}" />
+        <property name="maxConnectTimeout" value="${aldica.core.local.comm.maxConnectTimeout}" />
+        <property name="socketWriteTimeout" value="${aldica.core.local.comm.socketWriteTimeout}" />
+        <property name="connectionsPerNode" value="${aldica.core.local.comm.connectionsPerNode}" />
+        <property name="filterReachableAddresses" value="${aldica.core.local.comm.filterReachableAddresses}" />
+
+        <property name="messageQueueLimit" value="${aldica.core.local.comm.messageQueueLimit}" />
+    </bean>
+
+    <bean id="CollisionSPI.${moduleId}.core" abstract="true" class="org.apache.ignite.spi.collision.fifoqueue.FifoQueueCollisionSpi" />
+
+    <bean id="PluginProvider.${moduleId}.core.security" abstract="true"
+        class="org.aldica.common.ignite.plugin.SimpleSecurityPluginProvider">
+        <property name="configuration" ref="PluginConfiguration.${moduleId}.core.security" />
+    </bean>
+
+    <bean id="PluginConfiguration.${moduleId}.core.security" abstract="true"
+        class="org.aldica.common.ignite.plugin.SimpleSecurityPluginConfiguration">
+        <property name="credentials" ref="DiscoverySPI.${moduleId}.core.credentials" />
+        <property name="allowedNodeCredentials">
+            <list>
+                <ref bean="DiscoverySPI.${moduleId}.core.credentials" />
+            </list>
+        </property>
+        <property name="tierAttributeValue" value="repository" />
+        <property name="allowedNodeTierAttributeValues">
+            <list>
+                <value>repository</value>
+            </list>
+        </property>
+    </bean>
+
+    <bean id="Misc.${moduleId}.core.logger" abstract="true" class="org.apache.ignite.logger.slf4j.Slf4jLogger" />
+</beans>
