@@ -32,6 +32,14 @@ services:
         --add-opens=java.base/java.util=ALL-UNNAMED
         --add-opens=java.base/sun.nio.ch=ALL-UNNAMED
         --add-opens=java.base/javax.crypto=ALL-UNNAMED
+        --add-opens=java.base/jdk.internal.misc=ALL-UNNAMED
+        --add-opens=java.base/java.util.concurrent=ALL-UNNAMED
+        --add-opens=java.base/java.lang.invoke=ALL-UNNAMED
+        --add-opens=java.base/java.lang.reflect=ALL-UNNAMED
+        --add-opens=java.sql/java.sql=ALL-UNNAMED
+        --add-exports=java.base/jdk.internal.misc=ALL-UNNAMED
+        --add-opens=java.management/sun.management=ALL-UNNAMED
+        --add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED
         --illegal-access=permit
         -XX:+UseG1GC
         -XX:+ParallelRefProcEnabled
@@ -82,6 +90,14 @@ services:
         --add-opens=java.base/java.util=ALL-UNNAMED
         --add-opens=java.base/sun.nio.ch=ALL-UNNAMED
         --add-opens=java.base/javax.crypto=ALL-UNNAMED
+        --add-opens=java.base/jdk.internal.misc=ALL-UNNAMED
+        --add-opens=java.base/java.util.concurrent=ALL-UNNAMED
+        --add-opens=java.base/java.lang.invoke=ALL-UNNAMED
+        --add-opens=java.base/java.lang.reflect=ALL-UNNAMED
+        --add-opens=java.sql/java.sql=ALL-UNNAMED
+        --add-exports=java.base/jdk.internal.misc=ALL-UNNAMED
+        --add-opens=java.management/sun.management=ALL-UNNAMED
+        --add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED
         --illegal-access=permit
         -XX:+UseG1GC
         -XX:+ParallelRefProcEnabled
